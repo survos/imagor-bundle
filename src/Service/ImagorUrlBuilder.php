@@ -71,7 +71,48 @@ final class ImagorUrlBuilder
             throw new \InvalidArgumentException(sprintf('Unknown imagor preset "%s". Available: %s', $preset, implode(', ', array_keys($this->presets))));
         }
 
+        if (null !== $flickr = self::flickrSize($source, $this->presets[$preset])) {
+            return $flickr;
+        }
+
         return $this->build($source, $this->presets[$preset]);
+    }
+
+    /**
+     * Flickr already serves every size we need, and its edge refuses fetches from
+     * our servers (measured 2026-10-13 from fsn1: 403 with a bot User-Agent, 429
+     * with curl's) — the same reason imgproxy-bundle skips imgproxy for Flickr.
+     * Pick the smallest variant (same secret, no API call) covering the preset's
+     * longest edge; browsers load it directly (Flickr sends CORS *).
+     */
+    public static function flickrSize(string $url, string $options): ?string
+    {
+        if (!preg_match('~^https?://(?:farm\d+|live)\.staticflickr\.com/(\d+)/(\d+)_([0-9a-f]+)(?:_([a-z]))?\.jpg$~i', $url, $m)) {
+            return null;
+        }
+
+        // longest edge => suffix; _h/_k/_o use a different secret, so 1024 is the ceiling here
+        $sizes = [240 => '_m', 320 => '_n', 500 => '', 640 => '_z', 800 => '_c', 1024 => '_b'];
+        // Never go above the source URL's own size; callers hand us the largest that exists.
+        $own = strtolower($m[4] ?? '');
+        $max = ['s' => 75, 't' => 100, 'q' => 150, 'm' => 240, 'n' => 320, 'w' => 400, '' => 500, 'z' => 640, 'c' => 800][$own] ?? 1024;
+        $want = preg_match('~(?:^|/)(?:fit-in/)?(\d+)x(\d+)(?:/|$)~', $options, $d) ? max((int) $d[1], (int) $d[2]) : 0;
+        $want = $want ?: PHP_INT_MAX; // no size (archive) = largest available
+        $suffix = '' === $own ? '' : '_'.$own;
+        foreach ($sizes as $edge => $candidate) {
+            if ($edge > $max) {
+                break;
+            }
+            $suffix = $candidate;
+            if ($edge >= $want) {
+                break;
+            }
+        }
+        if ($max < 240) {
+            $suffix = '_'.$own;
+        }
+
+        return sprintf('https://live.staticflickr.com/%s/%s_%s%s.jpg', $m[1], $m[2], $m[3], $suffix);
     }
 
     /**

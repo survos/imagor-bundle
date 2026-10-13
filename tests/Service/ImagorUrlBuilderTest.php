@@ -99,4 +99,15 @@ final class ImagorUrlBuilderTest extends TestCase
         self::assertSame('LwgGBgCFNuOJaQqIiGuIg7hXAAAAAAA=', $meta->thumbhash);
         self::assertSame('#c0c0c0', $meta->averageHex());
     }
+
+    public function testFlickrIsServedByFlickr(): void
+    {
+        $b = $this->builder();
+        $base = 'https://live.staticflickr.com/65535/55578917726_234ae89748';
+        self::assertSame($base.'_m.jpg', $b->preset($base.'_b.jpg', 'tiny'), '200px → 240 (_m)');
+        self::assertSame($base.'.jpg', $b->preset($base.'_b.jpg', 'thumb'), '400px → 500');
+        self::assertSame($base.'_z.jpg', $b->preset($base.'_b.jpg', 'display'), '600px → 640 (_z)');
+        self::assertSame($base.'_b.jpg', $b->preset($base.'_b.jpg', 'archive'), 'no size → largest');
+        self::assertSame($base.'_z.jpg', $b->preset($base.'_z.jpg', 'large'), 'never above the source size');
+    }
 }
