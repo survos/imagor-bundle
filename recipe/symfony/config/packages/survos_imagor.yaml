@@ -1,0 +1,8 @@
+survos_imagor:
+    host: '%env(IMAGOR_HOST)%'
+    secret: '%env(IMAGOR_SECRET)%'
+    # Buckets the server reads in place as {bucket}/{key} — mirror its buckets.yaml.
+    buckets: [museado]
+    # s3_endpoint: '%env(S3_ENDPOINT)%'   # our storage's https URLs → {bucket}/{key}
+    # presets: replace the defaults (tiny, thumb, observe, display, archive, card, large);
+    #          keep them identical to IMAGOR_PRESETS on the server or they never cache.
