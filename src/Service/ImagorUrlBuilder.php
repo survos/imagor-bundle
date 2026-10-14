@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Survos\ImagorBundle\Service;
 
+use Survos\ImageContracts\ImageMeta;
+use Survos\ImageContracts\ImageMetaProviderInterface;
+use Survos\ImageContracts\ImageUrlBuilderInterface;
 use Survos\ImagorBundle\Dto\ImagorMeta;
 use Survos\ImagorBundle\SurvosImagorBundle;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -22,7 +25,7 @@ use Twig\Attribute\AsTwigFilter;
  *
  * All configuration is injected (survos_imagor.yaml); nothing reads the env here.
  */
-final class ImagorUrlBuilder
+final class ImagorUrlBuilder implements ImageUrlBuilderInterface, ImageMetaProviderInterface
 {
     /**
      * @param array<string, string> $presets name => imagor options
@@ -63,9 +66,15 @@ final class ImagorUrlBuilder
         return null !== $this->imagePath($source);
     }
 
-    /** {{ asset.url|imagor('thumb') }} */
+    /**
+     * {{ asset.url|imagor('thumb') }}, {{ asset.url|imagor('thumb', 'png') }}.
+     *
+     * $format swaps the preset's format() filter (imagor presets are client-expanded, so any
+     * format is just another options string). The server only persists results whose options
+     * match its preset byte-for-byte, so an override renders fine but is never cached there.
+     */
     #[AsTwigFilter('imagor')]
-    public function preset(string $source, string $preset = 'thumb'): string
+    public function preset(string $source, string $preset = 'thumb', ?string $format = null): string
     {
         if (!isset($this->presets[$preset])) {
             throw new \InvalidArgumentException(sprintf('Unknown imagor preset "%s". Available: %s', $preset, implode(', ', array_keys($this->presets))));
@@ -75,7 +84,55 @@ final class ImagorUrlBuilder
             return $flickr;
         }
 
-        return $this->build($source, $this->presets[$preset]);
+        return $this->build($source, null === $format ? $this->presets[$preset] : self::withFormat($this->presets[$preset], $format));
+    }
+
+    /**
+     * Inverse of preset()/build() for http(s) sources, whose percent-encoded URL is always the
+     * last path segment. Own-bucket sources come back as s3://{bucket}/{key} only when the
+     * options are a known preset (otherwise where the options end is ambiguous); anything else,
+     * including URLs not on our host, is returned unchanged.
+     */
+    public function sourceUrl(string $url): string
+    {
+        $host = rtrim((string) $this->host, '/').'/';
+        if (!$this->isConfigured() || !str_starts_with($url, $host)) {
+            return $url;
+        }
+        // drop the signature segment: {options}/{image}
+        $path = substr($url, strlen($host));
+        $path = substr($path, (int) strpos($path, '/') + 1);
+
+        $last = rawurldecode(basename($path));
+        if (preg_match('~^https?://~i', $last)) {
+            return $last;
+        }
+        foreach ($this->presets as $options) {
+            if (str_starts_with($path, trim($options, '/').'/')) {
+                return 's3://'.implode('/', array_map(rawurldecode(...), explode('/', substr($path, strlen(trim($options, '/')) + 1))));
+            }
+        }
+
+        return $url;
+    }
+
+    /** The common subset of meta/ as a backend-neutral DTO. */
+    public function imageMeta(string $source): ImageMeta
+    {
+        return $this->meta($source)->toImageMeta();
+    }
+
+    private static function withFormat(string $options, string $format): string
+    {
+        if (!preg_match('/^[a-z0-9]+$/i', $format)) {
+            throw new \InvalidArgumentException(sprintf('Invalid imagor format "%s".', $format));
+        }
+        $replaced = preg_replace('/format\([^)]*\)/', 'format('.$format.')', $options, 1, $count) ?? $options;
+        if ($count > 0) {
+            return $replaced;
+        }
+
+        return str_contains($options, 'filters:') ? $options.':format('.$format.')' : trim($options.'/filters:format('.$format.')', '/');
     }
 
     /**

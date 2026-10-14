@@ -29,6 +29,7 @@
         "symfony/dependency-injection": "^8.1",
         "symfony/http-client-contracts": "^3.5",
         "symfony/http-kernel": "^8.1",
+        "survos/image-contracts": "^2.5",
         "survos/kit-bundle": "^2.5",
         "twig/twig": "^3.14|^4.0"
     },

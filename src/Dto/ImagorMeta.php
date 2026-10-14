@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Survos\ImagorBundle\Dto;
 
+use Survos\ImageContracts\ImageMeta;
+
 /**
  * imagor's meta/ response. Unlike imgproxy Pro's /info there are no palettes,
  * perceptual hashes, checksums or classification — but thumbhash, blurhash and
@@ -48,6 +50,19 @@ final readonly class ImagorMeta
             blurhash: $data['blurhash'] ?? null,
             averageColor: $data['average_color'] ?? null,
             detectedRegions: $data['detected_regions'] ?? [],
+        );
+    }
+
+    /** The backend-neutral subset ({@see \Survos\ImageContracts\ImageMetaProviderInterface}). */
+    public function toImageMeta(): ImageMeta
+    {
+        return new ImageMeta(
+            width: $this->width ?: null,
+            height: $this->height ?: null,
+            format: '' === $this->format ? null : strtolower($this->format),
+            thumbhash: $this->thumbhash,
+            blurhash: $this->blurhash,
+            averageColor: $this->averageHex(),
         );
     }
 

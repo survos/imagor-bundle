@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Survos\ImagorBundle\Tests\Kernel;
 
 use PHPUnit\Framework\TestCase;
+use Survos\ImageContracts\ImageMetaProviderInterface;
+use Survos\ImageContracts\ImageUrlBuilderInterface;
 use Survos\ImagorBundle\Service\ImagorUrlBuilder;
 use Survos\ImagorBundle\SurvosImagorBundle;
 use Survos\Kit\SurvosKitBundle;
@@ -30,6 +32,8 @@ final class BundleWiringTest extends TestCase
         self::assertFalse($b->supports('s3://other/a.jpg'), 'buckets from config');
         self::assertTrue($b->hasPreset('page'), 'presets from config replace the defaults');
         self::assertFalse($b->hasPreset('thumb'));
+        self::assertSame($b, $c->get(ImageUrlBuilderInterface::class), 'consumers inject the contract, not the class');
+        self::assertSame($b, $c->get(ImageMetaProviderInterface::class));
 
         $twig = $c->get('test.service_container')->get('twig');
         $html = $twig->createTemplate("{{ 's3://ink-rappnews/a.jp2'|imagor('page') }} {{ 's3://ink-rappnews/a.jp2'|imagor_crop(0, 0, 10, 10) }}")->render();

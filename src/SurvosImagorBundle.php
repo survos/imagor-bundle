@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Survos\ImagorBundle;
 
+use Survos\ImageContracts\ImageMetaProviderInterface;
+use Survos\ImageContracts\ImageUrlBuilderInterface;
 use Survos\ImagorBundle\Service\ImagorUrlBuilder;
 use Survos\Kit\AbstractSurvosBundle;
 use Survos\Kit\SurvosKitBundle;
@@ -88,5 +90,11 @@ final class SurvosImagorBundle extends AbstractSurvosBundle
             ->arg('$httpClient', service('http_client')->nullOnInvalid())
             ->public()
             ->autoconfigure();
+
+        // Backend-neutral injection points. With both imgproxy-bundle and imagor-bundle installed
+        // the later bundle in bundles.php wins; an app pins its choice by aliasing these in its
+        // own services.yaml, which always overrides a bundle's alias.
+        $container->services()->alias(ImageUrlBuilderInterface::class, ImagorUrlBuilder::class)->public();
+        $container->services()->alias(ImageMetaProviderInterface::class, ImagorUrlBuilder::class)->public();
     }
 }

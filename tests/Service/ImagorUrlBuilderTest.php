@@ -98,6 +98,25 @@ final class ImagorUrlBuilderTest extends TestCase
         self::assertSame(8551, $meta->width);
         self::assertSame('LwgGBgCFNuOJaQqIiGuIg7hXAAAAAAA=', $meta->thumbhash);
         self::assertSame('#c0c0c0', $meta->averageHex());
+
+        $common = $this->builder($http)->imageMeta('s3://museado/orig/a.jpg');
+        self::assertSame(['width' => 8551, 'height' => 10680, 'format' => 'jpeg', 'thumbhash' => 'LwgGBgCFNuOJaQqIiGuIg7hXAAAAAAA=', 'blurhash' => 'L9MQ*JfQ-;t7~qt7xuxu9Foft7j[', 'averageColor' => '#c0c0c0'], $common->toArray());
+    }
+
+    public function testFormatOverrideSwapsThePresetsFormatFilter(): void
+    {
+        $b = $this->builder();
+        $png = $b->preset('s3://museado/orig/a.jpg', 'thumb', 'png');
+
+        self::assertStringEndsWith('/fit-in/400x400/filters:quality(80):format(png)/museado/orig/a.jpg', $png);
+        self::assertSame(
+            'http://localhost:8000/'.$b->sign('fit-in/400x400/filters:quality(80):format(png)/museado/orig/a.jpg').'/fit-in/400x400/filters:quality(80):format(png)/museado/orig/a.jpg',
+            $png,
+            'the override is signed, not appended after signing',
+        );
+
+        $this->expectException(\InvalidArgumentException::class);
+        $b->preset('s3://museado/orig/a.jpg', 'thumb', 'png):evil(');
     }
 
     public function testFlickrIsServedByFlickr(): void
