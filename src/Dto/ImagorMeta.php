@@ -31,6 +31,7 @@ final readonly class ImagorMeta
         public ?string $blurhash = null,
         public ?array $averageColor = null,
         public array $detectedRegions = [],
+        public ?array $ocr = null,
     ) {
     }
 
@@ -50,6 +51,7 @@ final readonly class ImagorMeta
             blurhash: $data['blurhash'] ?? null,
             averageColor: $data['average_color'] ?? null,
             detectedRegions: $data['detected_regions'] ?? [],
+            ocr: is_array($data['ocr'] ?? null) ? $data['ocr'] : null,
         );
     }
 

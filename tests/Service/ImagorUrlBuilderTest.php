@@ -26,6 +26,18 @@ final class ImagorUrlBuilderTest extends TestCase
         );
     }
 
+    public function testOptionalOcrPayloadSurvivesMetadataParsing(): void
+    {
+        $ocr = ['text' => 'Archive', 'model' => 'tiny', 'regions' => [['box' => [[1, 2], [3, 2], [3, 4], [1, 4]]]]];
+        $http = new MockHttpClient(function ($method, $url) use ($ocr) {
+            self::assertStringContainsString('/meta/filters:thumbhash():ocr()/', $url);
+
+            return new MockResponse(json_encode(['width' => 100, 'height' => 200, 'ocr' => $ocr], JSON_THROW_ON_ERROR));
+        });
+        self::assertSame($ocr, $this->builder($http)->meta('s3://museado/page.jpg', ['thumbhash', 'ocr'])->ocr);
+        self::assertNull(\Survos\ImagorBundle\Dto\ImagorMeta::fromArray(['width' => 100])->ocr);
+    }
+
     public function testS3SourceIsBucketSlashKey(): void
     {
         self::assertSame(
