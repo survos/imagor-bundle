@@ -73,6 +73,17 @@ final class ImagorUrlBuilderTest extends TestCase
         self::assertTrue($b->supports('https://nabolom.fsn1.your-objectstorage.com/a.jpg?X-Amz-Signature=1'), 'presigned stays an http source');
     }
 
+    public function testUploadedBytesGetTheSameKeyRuleAsFetchedSources(): void
+    {
+        $b = $this->builder();
+        $url = 'https://example.org/a.pdf';
+        self::assertSame('s3://museado/'.$b->sourceKey($url), $b->cachedSourceUrl($url));
+
+        $identity = 'upload://sha256/'.str_repeat('ab', 32);
+        $d = sha1($identity);
+        self::assertSame(sprintf('imagor/src/%s/%s/%s', substr($d, 0, 2), substr($d, 2, 2), $d), $b->sourceKey($identity));
+    }
+
     public function testCachedSourceUrlMatchesTheServerKey(): void
     {
         $url = 'https://iiif.example.org/iiif/2/a%3Ab/full/max/0/default.jpg';

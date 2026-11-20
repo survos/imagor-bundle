@@ -238,9 +238,22 @@ final class ImagorUrlBuilder implements ImageUrlBuilderInterface, ImageMetaProvi
         if (!preg_match('~^https?://~i', $source)) {
             return null;
         }
-        $d = sha1($source);
 
-        return sprintf('s3://%s/%s/%s/%s/%s', $this->sourceBucket, trim($this->sourcePrefix, '/'), substr($d, 0, 2), substr($d, 2, 2), $d);
+        return sprintf('s3://%s/%s', $this->sourceBucket, $this->sourceKey($source));
+    }
+
+    /**
+     * Key of the retained source copy, relative to a bucket: {prefix}/{aa}/{bb}/{sha1(identity)}.
+     *
+     * The identity is the source URL. Bytes that arrive by upload have no URL, so callers use the
+     * identity `upload://sha256/<hash>`. One rule for both, so an object has the same key whether
+     * Imagor fetched it or the application wrote it.
+     */
+    public function sourceKey(string $identity): string
+    {
+        $d = sha1($identity);
+
+        return sprintf('%s/%s/%s/%s', trim($this->sourcePrefix, '/'), substr($d, 0, 2), substr($d, 2, 2), $d);
     }
 
     public function sign(string $path): string
